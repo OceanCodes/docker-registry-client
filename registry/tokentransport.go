@@ -2,9 +2,15 @@ package registry
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ecr"
 )
 
 type TokenTransport struct {
@@ -39,33 +45,49 @@ func (t *TokenTransport) authAndRetry(authService *authService, req *http.Reques
 }
 
 func (t *TokenTransport) auth(authService *authService) (string, *http.Response, error) {
-	authReq, err := authService.Request(t.Username, t.Password)
-	if err != nil {
-		return "", nil, err
-	}
 
-	client := http.Client{
-		Transport: t.Transport,
-	}
+	if registryID, region, err := parseECRRegistry(authService.Realm); err != nil {
+		authReq, err := authService.Request(t.Username, t.Password)
+		if err != nil {
+			return "", nil, err
+		}
 
-	response, err := client.Do(authReq)
-	if err != nil {
-		return "", nil, err
-	}
+		client := http.Client{
+			Transport: t.Transport,
+		}
 
-	if response.StatusCode != http.StatusOK {
-		return "", response, err
-	}
-	defer response.Body.Close()
+		response, err := client.Do(authReq)
+		if err != nil {
+			return "", nil, err
+		}
 
-	var authToken authToken
-	decoder := json.NewDecoder(response.Body)
-	err = decoder.Decode(&authToken)
-	if err != nil {
-		return "", nil, err
-	}
+		if response.StatusCode != http.StatusOK {
+			return "", response, err
+		}
+		defer response.Body.Close()
 
-	return authToken.Token, nil, nil
+		var authToken authToken
+		decoder := json.NewDecoder(response.Body)
+		err = decoder.Decode(&authToken)
+		if err != nil {
+			return "", nil, err
+		}
+
+		return authToken.Token, nil, nil
+	} else {
+		session, err := session.NewSession()
+		if err != nil {
+			return "", nil, err
+		}
+
+		e := ecr.New(session, aws.NewConfig().WithRegion(region))
+		authOutput, err := e.GetAuthorizationToken(&ecr.GetAuthorizationTokenInput{RegistryIds: []*string{&registryID}})
+		if err != nil {
+			return "", nil, err
+		}
+
+		return *authOutput.AuthorizationData[0].AuthorizationToken, nil, nil
+	}
 }
 
 func (t *TokenTransport) retry(req *http.Request, token string) (*http.Response, error) {
@@ -124,4 +146,18 @@ func parseOauthHeader(resp *http.Response) *authService {
 		}
 	}
 	return nil
+}
+
+func parseECRRegistry(image string) (registryID, region string, err error) {
+
+	// 524950183868.dkr.ecr.us-east-1.amazonaws.com
+	registryRegex := regexp.MustCompile(`^(\d+)\.dkr\.ecr\.(.+)\.amazonaws\.com`)
+	matches := registryRegex.FindStringSubmatch(image)
+	if len(matches) != 4 {
+		err = errors.New("Not an ECR image")
+		return
+	}
+	registryID = matches[1]
+	region = matches[2]
+	return
 }
