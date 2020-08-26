@@ -27,7 +27,8 @@ func (t *TokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if authService := isTokenDemand(resp); authService != nil {
-		resp, err = t.authAndRetry(authService, req)
+		log.Println("authAndRetry init")
+		return t.authAndRetry(authService, req)
 	}
 	return resp, err
 }
