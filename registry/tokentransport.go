@@ -56,7 +56,6 @@ func (t *TokenTransport) auth(authService *authService) (string, *http.Response,
 	log.Printf("auth started realm: %s", authService.Realm)
 
 	if registryID, region, err := parseECRRegistry(authService.Realm); err != nil {
-		log.Println("Basic")
 		authReq, err := authService.Request(t.Username, t.Password)
 		if err != nil {
 			return "", nil, err
@@ -82,7 +81,6 @@ func (t *TokenTransport) auth(authService *authService) (string, *http.Response,
 		if err != nil {
 			return "", nil, err
 		}
-		log.Printf("auth token: %s", authToken.Token)
 		return authToken.Token, nil, nil
 	} else {
 		log.Println("ECR")
@@ -165,7 +163,7 @@ func parseOauthHeader(resp *http.Response) *authService {
 func parseECRRegistry(image string) (registryID, region string, err error) {
 
 	// 524950183868.dkr.ecr.us-east-1.amazonaws.com
-	registryRegex := regexp.MustCompile(`^(\d+)\.dkr\.ecr\.(.+)\.amazonaws\.com`)
+	registryRegex := regexp.MustCompile(`^https://(\d+)\.dkr\.ecr\.(.+)\.amazonaws\.com`)
 	matches := registryRegex.FindStringSubmatch(image)
 	if len(matches) != 2 {
 		err = errors.New("Not an ECR image")
