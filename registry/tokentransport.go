@@ -153,7 +153,7 @@ func parseECRRegistry(image string) (registryID, region string, err error) {
 	// 524950183868.dkr.ecr.us-east-1.amazonaws.com
 	registryRegex := regexp.MustCompile(`^(\d+)\.dkr\.ecr\.(.+)\.amazonaws\.com`)
 	matches := registryRegex.FindStringSubmatch(image)
-	if len(matches) != 4 {
+	if len(matches) != 2 {
 		err = errors.New("Not an ECR image")
 		return
 	}
