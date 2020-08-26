@@ -26,10 +26,12 @@ func (t *TokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return resp, err
 	}
 
+	log.Println("authAndRetry init first")
 	if authService := isTokenDemand(resp); authService != nil {
 		log.Println("authAndRetry init")
 		return t.authAndRetry(authService, req)
 	}
+	log.Printf("err %s", err)
 	return resp, err
 }
 
