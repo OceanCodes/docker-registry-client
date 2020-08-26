@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -47,6 +48,7 @@ func (t *TokenTransport) authAndRetry(authService *authService, req *http.Reques
 func (t *TokenTransport) auth(authService *authService) (string, *http.Response, error) {
 
 	if registryID, region, err := parseECRRegistry(authService.Realm); err != nil {
+		log.Println("Basic")
 		authReq, err := authService.Request(t.Username, t.Password)
 		if err != nil {
 			return "", nil, err
@@ -72,9 +74,11 @@ func (t *TokenTransport) auth(authService *authService) (string, *http.Response,
 		if err != nil {
 			return "", nil, err
 		}
-
+		log.Printf("auth token: %s", authToken.Token)
 		return authToken.Token, nil, nil
 	} else {
+		log.Println("ECR")
+
 		session, err := session.NewSession()
 		if err != nil {
 			return "", nil, err
@@ -85,6 +89,8 @@ func (t *TokenTransport) auth(authService *authService) (string, *http.Response,
 		if err != nil {
 			return "", nil, err
 		}
+
+		log.Printf("auth token: %s", *authOutput.AuthorizationData[0].AuthorizationToken)
 
 		return *authOutput.AuthorizationData[0].AuthorizationToken, nil, nil
 	}
