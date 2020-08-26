@@ -92,7 +92,7 @@ func newFromTransport(registryUrl, username, password string, transport http.Rou
 		},
 		Logf: logf,
 	}
-
+	log.Printf("transport = %s", transport)
 	if err := registry.Ping(); err != nil {
 		return nil, err
 	}
@@ -110,7 +110,6 @@ func (r *Registry) Ping() error {
 	url := r.url("/v2/")
 	r.Logf("registry.ping url=%s", url)
 	resp, err := r.Client.Get(url)
-	r.Logf("registry.header header=%s", resp.Header)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
