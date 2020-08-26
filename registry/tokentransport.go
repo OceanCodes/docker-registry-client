@@ -2,17 +2,15 @@ package registry
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
-	"regexp"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecr"
+
+	cdocker "github.com/OceanCodes/common/docker"
 )
 
 type TokenTransport struct {
@@ -27,12 +25,9 @@ func (t *TokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return resp, err
 	}
 
-	log.Println("authAndRetry init first")
-	if authService := isTokenDemand(resp); authService != nil {
-		log.Println("authAndRetry init")
-		return t.authAndRetry(authService, req)
+	if authService, basic := isTokenDemand(resp); authService != nil {
+		return t.authAndRetry(authService, req, basic)
 	}
-	log.Printf("err %s", err)
 	return resp, err
 }
 
@@ -40,23 +35,18 @@ type authToken struct {
 	Token string `json:"token"`
 }
 
-func (t *TokenTransport) authAndRetry(authService *authService, req *http.Request) (*http.Response, error) {
-	log.Println("authAndRetry started")
+func (t *TokenTransport) authAndRetry(authService *authService, req *http.Request, basic bool) (*http.Response, error) {
 	token, authResp, err := t.auth(authService)
-	log.Printf("authAndRetry token %s ", token)
 	if err != nil {
-		log.Println("error auth")
 		return authResp, err
 	}
 
-	retryResp, err := t.retry(req, token)
+	retryResp, err := t.retry(req, token, basic)
 	return retryResp, err
 }
 
 func (t *TokenTransport) auth(authService *authService) (string, *http.Response, error) {
-	log.Printf("auth started realm: %s", authService.Realm)
-
-	if registryID, region, err := parseECRRegistry(authService.Realm); err != nil {
+	if ecrImage, err := cdocker.ParseECRRegistry(authService.Realm); err != nil {
 		authReq, err := authService.Request(t.Username, t.Password)
 		if err != nil {
 			return "", nil, err
@@ -84,27 +74,28 @@ func (t *TokenTransport) auth(authService *authService) (string, *http.Response,
 		}
 		return authToken.Token, nil, nil
 	} else {
-		log.Println("ECR")
-
 		session, err := session.NewSession()
 		if err != nil {
 			return "", nil, err
 		}
 
-		e := ecr.New(session, aws.NewConfig().WithRegion(region))
-		authOutput, err := e.GetAuthorizationToken(&ecr.GetAuthorizationTokenInput{RegistryIds: []*string{&registryID}})
+		e := ecr.New(session, aws.NewConfig().WithRegion(ecrImage.Region))
+		authOutput, err := e.GetAuthorizationToken(&ecr.GetAuthorizationTokenInput{RegistryIds: []*string{&ecrImage.RegistryID}})
 		if err != nil {
 			return "", nil, err
 		}
-
-		log.Printf("auth token: %s", *authOutput.AuthorizationData[0].AuthorizationToken)
 
 		return *authOutput.AuthorizationData[0].AuthorizationToken, nil, nil
 	}
 }
 
-func (t *TokenTransport) retry(req *http.Request, token string) (*http.Response, error) {
-	req.Header.Set("Authorization", fmt.Sprintf("Basic %s", token))
+func (t *TokenTransport) retry(req *http.Request, token string, basic bool) (*http.Response, error) {
+	scheme := "Bearer"
+	if basic {
+		scheme = "Basic"
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("%s %s", scheme, token))
 	resp, err := t.Transport.RoundTrip(req)
 	return resp, err
 }
@@ -137,43 +128,33 @@ func (authService *authService) Request(username, password string) (*http.Reques
 	return request, err
 }
 
-func isTokenDemand(resp *http.Response) *authService {
+func isTokenDemand(resp *http.Response) (*authService, bool) {
 	if resp == nil {
-		return nil
+		return nil, false
 	}
 	if resp.StatusCode != http.StatusUnauthorized {
-		return nil
+		return nil, false
 	}
 	return parseOauthHeader(resp)
 }
 
-func parseOauthHeader(resp *http.Response) *authService {
+func parseOauthHeader(resp *http.Response) (*authService, bool) {
+
 	challenges := parseAuthHeader(resp.Header)
 	for _, challenge := range challenges {
-		if challenge.Scheme == "bearer" || challenge.Scheme == "basic" {
+		if challenge.Scheme == "bearer" {
 			return &authService{
 				Realm:   challenge.Parameters["realm"],
 				Service: challenge.Parameters["service"],
 				Scope:   challenge.Parameters["scope"],
-			}
+			}, false
+		} else if challenge.Scheme == "basic" {
+			return &authService{
+				Realm:   challenge.Parameters["realm"],
+				Service: challenge.Parameters["service"],
+				Scope:   challenge.Parameters["scope"],
+			}, true
 		}
 	}
-	return nil
-}
-
-func parseECRRegistry(realm string) (registryID, region string, err error) {
-
-	// 524950183868.dkr.ecr.us-east-1.amazonaws.com
-
-	registryRegex := regexp.MustCompile(`(\d+)\.dkr\.ecr\.(.+)\.amazonaws\.com`)
-	matches := registryRegex.FindStringSubmatch(realm)
-	log.Printf("%s", strings.Join(matches, ","))
-	if len(matches) != 3 {
-		log.Printf("%s", realm)
-		err = errors.New("Not an ECR realm")
-		return
-	}
-	registryID = matches[1]
-	region = matches[2]
-	return
+	return nil, false
 }
