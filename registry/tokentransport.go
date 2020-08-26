@@ -151,7 +151,7 @@ func isTokenDemand(resp *http.Response) *authService {
 func parseOauthHeader(resp *http.Response) *authService {
 	challenges := parseAuthHeader(resp.Header)
 	for _, challenge := range challenges {
-		if challenge.Scheme == "bearer" {
+		if challenge.Scheme == "bearer" || challenge.Scheme == "basic" {
 			return &authService{
 				Realm:   challenge.Parameters["realm"],
 				Service: challenge.Parameters["service"],
