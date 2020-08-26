@@ -168,7 +168,7 @@ func parseECRRegistry(realm string) (registryID, region string, err error) {
 	registryRegex := regexp.MustCompile(`(\d+)\.dkr\.ecr\.(.+)\.amazonaws\.com`)
 	matches := registryRegex.FindStringSubmatch(realm)
 	log.Printf("%s", strings.Join(matches, ","))
-	if len(matches) != 2 {
+	if len(matches) != 3 {
 		log.Printf("%s", realm)
 		err = errors.New("Not an ECR realm")
 		return
