@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -163,10 +164,12 @@ func parseOauthHeader(resp *http.Response) *authService {
 func parseECRRegistry(realm string) (registryID, region string, err error) {
 
 	// 524950183868.dkr.ecr.us-east-1.amazonaws.com
-	log.Printf("%s", realm)
-	registryRegex := regexp.MustCompile(`^https://(\d+)\.dkr\.ecr\.(.+)\.amazonaws\.com`)
+
+	registryRegex := regexp.MustCompile(`(\d+)\.dkr\.ecr\.(.+)\.amazonaws\.com`)
 	matches := registryRegex.FindStringSubmatch(realm)
+	log.Printf("%s", strings.Join(matches, ","))
 	if len(matches) != 2 {
+		log.Printf("%s", realm)
 		err = errors.New("Not an ECR realm")
 		return
 	}
