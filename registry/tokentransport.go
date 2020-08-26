@@ -21,13 +21,10 @@ type TokenTransport struct {
 }
 
 func (t *TokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	log.Println("transport token")
-
 	resp, err := t.Transport.RoundTrip(req)
 	if err != nil {
 		return resp, err
 	}
-	log.Println("is token demand")
 
 	if authService := isTokenDemand(resp); authService != nil {
 		resp, err = t.authAndRetry(authService, req)
@@ -40,8 +37,11 @@ type authToken struct {
 }
 
 func (t *TokenTransport) authAndRetry(authService *authService, req *http.Request) (*http.Response, error) {
+	log.Println("authAndRetry started")
 	token, authResp, err := t.auth(authService)
+	log.Printf("authAndRetry token %s ", token)
 	if err != nil {
+		log.Println("error auth")
 		return authResp, err
 	}
 
@@ -50,6 +50,7 @@ func (t *TokenTransport) authAndRetry(authService *authService, req *http.Reques
 }
 
 func (t *TokenTransport) auth(authService *authService) (string, *http.Response, error) {
+	log.Printf("auth started realm: %s", authService.Realm)
 
 	if registryID, region, err := parseECRRegistry(authService.Realm); err != nil {
 		log.Println("Basic")

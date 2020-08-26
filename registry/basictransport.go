@@ -1,7 +1,6 @@
 package registry
 
 import (
-	"log"
 	"net/http"
 	"strings"
 )
@@ -19,8 +18,6 @@ func (t *BasicTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 			req.SetBasicAuth(t.Username, t.Password)
 		}
 	}
-	log.Println("transport basic")
-
 	resp, err := t.Transport.RoundTrip(req)
 	return resp, err
 }
