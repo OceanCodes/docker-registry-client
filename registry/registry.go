@@ -110,6 +110,7 @@ func (r *Registry) Ping() error {
 	url := r.url("/v2/")
 	r.Logf("registry.ping url=%s", url)
 	resp, err := r.Client.Get(url)
+	r.Logf("registry.header header=%s", resp.Header)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
