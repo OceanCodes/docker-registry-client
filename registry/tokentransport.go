@@ -160,13 +160,14 @@ func parseOauthHeader(resp *http.Response) *authService {
 	return nil
 }
 
-func parseECRRegistry(image string) (registryID, region string, err error) {
+func parseECRRegistry(realm string) (registryID, region string, err error) {
 
 	// 524950183868.dkr.ecr.us-east-1.amazonaws.com
+	log.Printf("%s", realm)
 	registryRegex := regexp.MustCompile(`^https://(\d+)\.dkr\.ecr\.(.+)\.amazonaws\.com`)
-	matches := registryRegex.FindStringSubmatch(image)
+	matches := registryRegex.FindStringSubmatch(realm)
 	if len(matches) != 2 {
-		err = errors.New("Not an ECR image")
+		err = errors.New("Not an ECR realm")
 		return
 	}
 	registryID = matches[1]
