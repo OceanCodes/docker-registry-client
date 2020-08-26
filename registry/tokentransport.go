@@ -21,10 +21,14 @@ type TokenTransport struct {
 }
 
 func (t *TokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	log.Println("transport token")
+
 	resp, err := t.Transport.RoundTrip(req)
 	if err != nil {
 		return resp, err
 	}
+	log.Println("is token demand")
+
 	if authService := isTokenDemand(resp); authService != nil {
 		resp, err = t.authAndRetry(authService, req)
 	}
