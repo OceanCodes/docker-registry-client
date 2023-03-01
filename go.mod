@@ -19,6 +19,10 @@ replace (
 	github.com/gogo/protobuf => github.com/gogo/protobuf v1.3.2
 	// https://github.com/ultraware/funlen/pull/1
 	github.com/ultraware/funlen => github.com/golangci/funlen v0.0.0-20190909161642-5e59b9546114
+	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220314234659-1baeb1ce4c0b
+	golang.org/x/net => golang.org/x/net v0.7.0
+	golang.org/x/sys => golang.org/x/sys v0.0.0-20220412211240-33da011f77ad
+	golang.org/x/text => golang.org/x/text v0.3.8
 	// https://github.com/golang/tools/pull/139
 	golang.org/x/tools => github.com/golangci/tools v0.0.0-20190909104219-979bdb7f8cc8
 	gopkg.in/yaml.v2 => gopkg.in/yaml.v2 v2.2.8
